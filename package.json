@@ -1,7 +1,7 @@
 {
   "name": "ecommerce-dataform",
   "private": true,
-  "devDependencies": {
-    "@dataform/cli": "3.0.26"
+  "dependencies": {
+    "@dataform/core": "3.0.26"
   }
 }

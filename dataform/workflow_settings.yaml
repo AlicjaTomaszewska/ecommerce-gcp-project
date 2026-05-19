@@ -1,4 +1,4 @@
-defaultProject: ecommerce-project
+defaultProject: ecommerce-project-496110
 defaultLocation: europe-central2
 defaultDataset: silver
 defaultAssertionDataset: dataform_assertions

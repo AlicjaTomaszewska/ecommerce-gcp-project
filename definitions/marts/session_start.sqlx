@@ -13,6 +13,7 @@ SELECT
   s.user_session,
   s.user_id,
   s.session_start_ts,
+  s.session_start_date,
   s.first_event_type,
   s.first_product_id,
   s.first_category_code,

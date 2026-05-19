@@ -1,0 +1,27 @@
+config {
+  type: "table",
+  schema: dataform.projectConfig.vars.gold_dataset,
+  name: "session_start",
+  description: "Features known at the first moment of the session, without snapshots.",
+  tags: ["gold"],
+  bigquery: {
+    clusterBy: ["user_id", "session_start_date"]
+  }
+}
+
+SELECT
+  s.user_session,
+  s.user_id,
+  s.session_start_ts,
+  s.first_event_type,
+  s.first_product_id,
+  s.first_category_code,
+  s.first_brand,
+  s.first_price,
+  EXTRACT(HOUR FROM s.session_start_ts) AS hour_of_day,
+  c.is_weekend
+FROM
+  ${ref("sessions")} AS s
+LEFT JOIN
+  ${ref("calendar_dates")} AS c
+  ON DATE(s.session_start_ts) = c.calendar_date

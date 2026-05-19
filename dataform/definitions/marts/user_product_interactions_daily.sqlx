@@ -1,0 +1,74 @@
+js {
+  const { snapshotDate } = require("includes/constants");
+}
+
+config {
+  type: "incremental",
+  schema: dataform.projectConfig.vars.gold_dataset,
+  name: "user_product_interactions_daily",
+  description: "Daily snapshots of user-product interaction history.",
+  tags: ["gold"],
+  bigquery: {
+    partitionBy: "snapshot_date",
+    clusterBy: ["user_id", "product_id"],
+    updatePartitionFilter: "snapshot_date = DATE('${snapshotDate}')"
+  },
+  uniqueKey: ["snapshot_date", "user_id", "product_id"]
+}
+
+WITH windowed_events AS (
+  SELECT
+    user_id,
+    product_id,
+    event_type,
+    event_ts,
+    event_date
+  FROM
+    ${ref("events")}
+  WHERE
+    is_valid_event
+    AND event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 30 DAY)
+    AND event_date < DATE('${snapshotDate}')
+),
+
+last_view AS (
+  SELECT
+    user_id,
+    product_id,
+    MAX(event_ts) AS last_view_ts
+  FROM
+    ${ref("events")}
+  WHERE
+    is_valid_event
+    AND event_type = 'view'
+    AND event_date < DATE('${snapshotDate}')
+  GROUP BY
+    user_id,
+    product_id
+)
+
+SELECT
+  DATE('${snapshotDate}') AS snapshot_date,
+  w.user_id,
+  w.product_id,
+  COUNTIF(w.event_type = 'view') AS ui_view_count,
+  COUNTIF(w.event_type = 'cart') AS ui_cart_count,
+  COUNTIF(w.event_type = 'purchase') AS ui_purchase_count,
+  DATE_DIFF(DATE('${snapshotDate}'), DATE(lv.last_view_ts), DAY) AS ui_days_since_last_view,
+  EXP(-0.05 * DATE_DIFF(DATE('${snapshotDate}'), DATE(lv.last_view_ts), DAY)) AS ui_recency_score,
+  (
+    COUNTIF(w.event_type = 'view') * 1
+    + COUNTIF(w.event_type = 'cart') * 3
+    + COUNTIF(w.event_type = 'purchase') * 5
+  ) AS ui_interaction_score
+FROM
+  windowed_events AS w
+LEFT JOIN
+  last_view AS lv
+  ON w.user_id = lv.user_id
+  AND w.product_id = lv.product_id
+GROUP BY
+  snapshot_date,
+  w.user_id,
+  w.product_id,
+  lv.last_view_ts

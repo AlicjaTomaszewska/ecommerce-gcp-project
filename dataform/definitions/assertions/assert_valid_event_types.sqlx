@@ -1,0 +1,13 @@
+config {
+  type: "assertion",
+  schema: dataform.projectConfig.defaultAssertionDataset,
+  name: "assert_valid_event_types",
+  tags: ["assertions"]
+}
+
+SELECT
+  event_type
+FROM
+  ${ref("events")}
+WHERE
+  event_type NOT IN ('view', 'cart', 'purchase')

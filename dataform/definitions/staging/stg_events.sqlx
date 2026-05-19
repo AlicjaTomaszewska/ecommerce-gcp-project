@@ -1,0 +1,89 @@
+js {
+  const { snapshotDate } = require("includes/constants");
+}
+
+config {
+  type: "table",
+  schema: dataform.projectConfig.vars.silver_dataset,
+  name: "events",
+  description: "Cleaned and typed e-commerce events.",
+  tags: ["silver"],
+  bigquery: {
+    partitionBy: "event_date",
+    clusterBy: ["user_id", "product_id", "user_session"]
+  }
+}
+
+WITH parsed AS (
+  SELECT
+    TO_HEX(
+      SHA256(
+        CONCAT(
+          COALESCE(event_time_raw, ''),
+          '|',
+          COALESCE(event_type_raw, ''),
+          '|',
+          COALESCE(product_id_raw, ''),
+          '|',
+          COALESCE(user_id_raw, ''),
+          '|',
+          COALESCE(user_session_raw, ''),
+          '|',
+          COALESCE(CAST(_row_number AS STRING), '')
+        )
+      )
+    ) AS event_id,
+    TIMESTAMP(REPLACE(event_time_raw, ' UTC', '')) AS event_ts,
+    DATE(TIMESTAMP(REPLACE(event_time_raw, ' UTC', ''))) AS event_date,
+    LOWER(TRIM(event_type_raw)) AS event_type,
+    SAFE_CAST(product_id_raw AS INT64) AS product_id,
+    SAFE_CAST(category_id_raw AS INT64) AS category_id,
+    NULLIF(TRIM(category_code_raw), '') AS category_code,
+    NULLIF(LOWER(TRIM(brand_raw)), '') AS brand,
+    SAFE_CAST(price_raw AS NUMERIC) AS price,
+    SAFE_CAST(user_id_raw AS INT64) AS user_id,
+    TRIM(user_session_raw) AS user_session,
+    _source_uri,
+    _ingested_at,
+    _load_id,
+  FROM
+    ${ref("raw_events")}
+  WHERE
+    event_time_raw IS NOT NULL
+    AND event_type_raw IS NOT NULL
+    AND product_id_raw IS NOT NULL
+    AND user_id_raw IS NOT NULL
+    AND user_session_raw IS NOT NULL
+)
+
+SELECT
+  event_id,
+  event_ts,
+  event_date,
+  event_type,
+  product_id,
+  category_id,
+  category_code,
+  SPLIT(category_code, '.')[SAFE_OFFSET(0)] AS category_l1,
+  SPLIT(category_code, '.')[SAFE_OFFSET(1)] AS category_l2,
+  SPLIT(category_code, '.')[SAFE_OFFSET(2)] AS category_l3,
+  brand,
+  price,
+  user_id,
+  user_session,
+  (
+    event_ts IS NOT NULL
+    AND event_type IN ('view', 'cart', 'purchase')
+    AND product_id IS NOT NULL
+    AND user_id IS NOT NULL
+    AND user_session IS NOT NULL
+    AND (price IS NULL OR price >= 0)
+  ) AS is_valid_event,
+  _source_uri,
+  _ingested_at,
+  _load_id,
+  CURRENT_TIMESTAMP() AS _loaded_at
+FROM
+  parsed
+WHERE
+  event_type IN ('view', 'cart', 'purchase')

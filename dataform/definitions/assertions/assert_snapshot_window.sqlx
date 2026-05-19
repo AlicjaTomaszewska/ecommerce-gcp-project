@@ -1,0 +1,21 @@
+js {
+  const { snapshotDate } = require("includes/constants");
+}
+
+config {
+  type: "assertion",
+  schema: dataform.projectConfig.defaultAssertionDataset,
+  name: "assert_snapshot_date_after_events",
+  tags: ["assertions"]
+}
+
+SELECT
+  max_event_date
+FROM (
+  SELECT
+    MAX(event_date) AS max_event_date
+  FROM
+    ${ref("events")}
+)
+WHERE
+  max_event_date >= DATE('${snapshotDate}')

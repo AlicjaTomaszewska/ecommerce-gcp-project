@@ -1,0 +1,17 @@
+config {
+  type: "assertion",
+  schema: dataform.projectConfig.defaultAssertionDataset,
+  name: "assert_events_primary_keys",
+  tags: ["assertions"]
+}
+
+SELECT
+  event_id
+FROM
+  ${ref("events")}
+WHERE
+  event_id IS NULL
+  OR user_id IS NULL
+  OR product_id IS NULL
+  OR user_session IS NULL
+  OR event_ts IS NULL

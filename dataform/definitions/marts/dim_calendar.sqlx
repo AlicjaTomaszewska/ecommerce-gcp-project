@@ -1,0 +1,18 @@
+config {
+  type: "table",
+  schema: dataform.projectConfig.vars.gold_dataset,
+  name: "dim_calendar",
+  description: "Calendar dimension shared with gold layer and ML models.",
+  tags: ["gold"]
+}
+
+SELECT
+  calendar_date,
+  month,
+  week_of_year,
+  day_of_week,
+  hour_of_day,
+  is_weekend,
+  days_to_end_of_month
+FROM
+  ${ref("calendar_dates")}

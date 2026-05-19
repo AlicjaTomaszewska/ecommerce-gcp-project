@@ -1,0 +1,134 @@
+js {
+  const { snapshotDate } = require("includes/constants");
+}
+
+config {
+  type: "incremental",
+  schema: dataform.projectConfig.vars.gold_dataset,
+  name: "user_features_daily",
+  description: "Daily snapshots of user features with a window of 30 days prior to the snapshot date.",
+  tags: ["gold"],
+  bigquery: {
+    partitionBy: "snapshot_date",
+    clusterBy: ["user_id"],
+    updatePartitionFilter: "snapshot_date = DATE('${snapshotDate}')"
+  },
+  uniqueKey: ["snapshot_date", "user_id"]
+}
+
+WITH windowed_events AS (
+  SELECT
+    user_id,
+    user_session,
+    event_type,
+    price,
+    category_code,
+    brand,
+    event_ts,
+    event_date
+  FROM
+    ${ref("events")}
+  WHERE
+    is_valid_event
+    AND event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 30 DAY)
+    AND event_date < DATE('${snapshotDate}')
+),
+
+last_purchase AS (
+  SELECT
+    user_id,
+    MAX(event_ts) AS last_purchase_ts
+  FROM
+    ${ref("events")}
+  WHERE
+    is_valid_event
+    AND event_type = 'purchase'
+    AND event_date < DATE('${snapshotDate}')
+  GROUP BY
+    user_id
+),
+
+favorite_category AS (
+  SELECT
+    user_id,
+    category_code AS user_favorite_category_30d
+  FROM (
+    SELECT
+      user_id,
+      category_code,
+      ROW_NUMBER() OVER (
+        PARTITION BY user_id
+        ORDER BY COUNT(*) DESC, category_code
+      ) AS category_rank
+    FROM
+      windowed_events
+    WHERE
+      category_code IS NOT NULL
+    GROUP BY
+      user_id,
+      category_code
+  )
+  WHERE
+    category_rank = 1
+),
+
+favorite_brand AS (
+  SELECT
+    user_id,
+    brand AS user_favorite_brand_30d
+  FROM (
+    SELECT
+      user_id,
+      brand,
+      ROW_NUMBER() OVER (
+        PARTITION BY user_id
+        ORDER BY COUNT(*) DESC, brand
+      ) AS brand_rank
+    FROM
+      windowed_events
+    WHERE
+      brand IS NOT NULL
+    GROUP BY
+      user_id,
+      brand
+  )
+  WHERE
+    brand_rank = 1
+)
+
+SELECT
+  DATE('${snapshotDate}') AS snapshot_date,
+  w.user_id,
+  COUNTIF(w.event_type = 'purchase') AS user_purchase_count_30d,
+  COUNTIF(w.event_type = 'view') AS user_view_count_30d,
+  COUNTIF(w.event_type = 'cart') AS user_cart_count_30d,
+  SAFE_DIVIDE(
+    COUNTIF(w.event_type = 'purchase'),
+    NULLIF(COUNTIF(w.event_type = 'view'), 0)
+  ) AS user_conversion_rate_30d,
+  COUNT(DISTINCT w.user_session) AS user_sessions_30d,
+  AVG(IF(w.event_type = 'purchase', w.price, NULL)) AS user_avg_price_purchased,
+  fc.user_favorite_category_30d,
+  fb.user_favorite_brand_30d,
+  DATE_DIFF(DATE('${snapshotDate}'), DATE(lp.last_purchase_ts), DAY) AS days_since_last_purchase,
+  SAFE_DIVIDE(
+    COUNTIF(w.event_type = 'cart') - COUNTIF(w.event_type = 'purchase'),
+    NULLIF(COUNTIF(w.event_type = 'cart'), 0)
+  ) AS user_cart_abandon_rate_30d
+FROM
+  windowed_events AS w
+LEFT JOIN
+  last_purchase AS lp
+  ON w.user_id = lp.user_id
+LEFT JOIN
+  favorite_category AS fc
+  ON w.user_id = fc.user_id
+LEFT JOIN
+  favorite_brand AS fb
+  ON w.user_id = fb.user_id
+GROUP BY
+  snapshot_date,
+  w.user_id,
+  fc.user_favorite_category_30d,
+  fb.user_favorite_brand_30d,
+  lp.last_purchase_ts

@@ -1,0 +1,43 @@
+config {
+  type: "table",
+  schema: dataform.projectConfig.vars.silver_dataset,
+  name: "sessions",
+  description: "Session aggregate with the first event as the starting point.",
+  tags: ["silver"],
+  bigquery: {
+    clusterBy: ["user_id", "session_start_date"]
+  }
+}
+
+WITH ordered_events AS (
+  SELECT
+  e.*,
+  ROW_NUMBER() OVER (
+    PARTITION BY user_session
+    ORDER BY event_ts, event_id
+  ) AS event_rank_in_session
+  FROM
+    ${ref("events")} AS e
+  WHERE
+    is_valid_event
+)
+
+SELECT
+  user_session,
+  user_id,
+  MIN(event_ts) AS session_start_ts,
+  DATE(MIN(event_ts)) AS session_start_date,
+  MAX(IF(event_rank_in_session = 1, event_type, NULL)) AS first_event_type,
+  MAX(IF(event_rank_in_session = 1, product_id, NULL)) AS first_product_id,
+  MAX(IF(event_rank_in_session = 1, category_code, NULL)) AS first_category_code,
+  MAX(IF(event_rank_in_session = 1, brand, NULL)) AS first_brand,
+  MAX(IF(event_rank_in_session = 1, price, NULL)) AS first_price,
+  COUNT(*) AS event_count,
+  COUNTIF(event_type = 'view') AS view_count,
+  COUNTIF(event_type = 'cart') AS cart_count,
+  COUNTIF(event_type = 'purchase') AS purchase_count
+FROM
+  ordered_events
+GROUP BY
+  user_session,
+  user_id

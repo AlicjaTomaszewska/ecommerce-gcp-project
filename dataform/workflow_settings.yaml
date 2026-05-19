@@ -1,0 +1,9 @@
+defaultProject: ecommerce-project
+defaultLocation: europe-central2
+defaultDataset: silver
+defaultAssertionDataset: dataform_assertions
+vars:
+  snapshot_date: "2021-03-01"
+  bronze_dataset: bronze
+  silver_dataset: silver
+  gold_dataset: gold

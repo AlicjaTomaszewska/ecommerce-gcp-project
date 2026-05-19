@@ -1,7 +1,7 @@
 config {
   type: "declaration",
   name: "raw_events",
-  project: dataform.projectConfig.defaultProject,
-  dataset: dataform.projectConfig.vars.bronze_dataset,
-  description: "Raw events loaded manually into bronze.raw_events."
+  database: dataform.projectConfig.defaultProject,
+  schema: dataform.projectConfig.vars.bronze_dataset,
+  description: "Raw events loaded manually into bronze.raw_events (outside Dataform)."
 }

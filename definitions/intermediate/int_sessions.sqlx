@@ -17,7 +17,7 @@ WITH ordered_events AS (
     ORDER BY event_ts, event_id
   ) AS event_rank_in_session
   FROM
-    ${ref("events")} AS e
+    ${ref("silver", "fct_events")} AS e
   WHERE
     is_valid_event
 )

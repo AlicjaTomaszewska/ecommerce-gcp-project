@@ -15,4 +15,4 @@ SELECT
   is_weekend,
   days_to_end_of_month
 FROM
-  ${ref("calendar_dates")}
+  ${ref("silver", "calendar_dates")}

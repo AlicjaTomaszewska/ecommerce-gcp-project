@@ -1,23 +1,22 @@
 js {
   const { loadMonth } = require("includes/constants");
-  const monthPartitionFilter =
-    "event_date >= PARSE_DATE('%Y-%m', '" +
-    loadMonth +
-    "') AND event_date < DATE_ADD(PARSE_DATE('%Y-%m', '" +
-    loadMonth +
-    "'), INTERVAL 1 MONTH)";
 }
 
 config {
   type: "incremental",
   schema: dataform.projectConfig.vars.silver_dataset,
-  name: "events",
+  name: "fct_events",
   description: "Cleaned and typed e-commerce events. Incremental by calendar month (load_month var).",
   tags: ["silver"],
   bigquery: {
     partitionBy: "event_date",
     clusterBy: ["user_id", "product_id", "user_session"],
-    updatePartitionFilter: monthPartitionFilter
+    updatePartitionFilter:
+      "event_date >= PARSE_DATE('%Y-%m', '" +
+      dataform.projectConfig.vars.load_month +
+      "') AND event_date < DATE_ADD(PARSE_DATE('%Y-%m', '" +
+      dataform.projectConfig.vars.load_month +
+      "'), INTERVAL 1 MONTH)"
   },
   uniqueKey: ["event_id"]
 }
@@ -56,7 +55,7 @@ WITH parsed AS (
     _load_id,
     _load_month
   FROM
-    ${ref("raw_events")}
+    ${ref("bronze", "raw_events")}
   WHERE
     _load_month = PARSE_DATE('%Y-%m', '${loadMonth}')
     AND event_time_raw IS NOT NULL

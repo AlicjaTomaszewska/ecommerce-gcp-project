@@ -22,7 +22,7 @@ SELECT
   EXTRACT(HOUR FROM s.session_start_ts) AS hour_of_day,
   c.is_weekend
 FROM
-  ${ref("sessions")} AS s
+  ${ref("silver", "sessions")} AS s
 LEFT JOIN
-  ${ref("calendar_dates")} AS c
+  ${ref("silver", "calendar_dates")} AS c
   ON DATE(s.session_start_ts) = c.calendar_date

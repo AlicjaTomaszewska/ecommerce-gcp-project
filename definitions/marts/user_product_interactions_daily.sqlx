@@ -24,7 +24,7 @@ WITH windowed_events AS (
     event_ts,
     event_date
   FROM
-    ${ref("events")}
+    ${ref("silver", "fct_events")}
   WHERE
     is_valid_event
     AND event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 30 DAY)
@@ -37,7 +37,7 @@ last_view AS (
     product_id,
     MAX(event_ts) AS last_view_ts
   FROM
-    ${ref("events")}
+    ${ref("silver", "fct_events")}
   WHERE
     is_valid_event
     AND event_type = 'view'

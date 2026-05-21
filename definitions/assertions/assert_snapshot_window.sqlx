@@ -15,7 +15,7 @@ FROM (
   SELECT
     MAX(event_date) AS max_event_date
   FROM
-    ${ref("events")}
+    ${ref("silver", "fct_events")}
 )
 WHERE
   max_event_date >= DATE('${snapshotDate}')

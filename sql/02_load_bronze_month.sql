@@ -1,5 +1,5 @@
 -- Monthly bronze load (idempotent): set load_month and source URI, then run.
--- load_month: calendar month in the file (YYYY-MM). September 2020 is excluded (incomplete).
+-- load_month: calendar month in the file (YYYY-MM).
 -- snapshot_date for Dataform after this load: first day of the next month (e.g. 2020-10 -> 2021-03-01 is wrong; use 2020-11-01).
 
 DECLARE load_month STRING DEFAULT '2020-10';

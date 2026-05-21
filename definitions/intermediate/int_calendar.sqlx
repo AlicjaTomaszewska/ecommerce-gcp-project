@@ -11,7 +11,7 @@ WITH bounds AS (
     MIN(event_date) AS min_event_date,
     MAX(event_date) AS max_event_date
   FROM
-    ${ref("events")}
+    ${ref("silver", "fct_events")}
 )
 
 SELECT

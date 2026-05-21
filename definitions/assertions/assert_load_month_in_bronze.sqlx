@@ -16,7 +16,7 @@ FROM (
     CONCAT('No bronze rows for load_month=', '${loadMonth}') AS error,
     COUNT(*) AS row_count
   FROM
-    ${ref("raw_events")}
+    ${ref("bronze", "raw_events")}
   WHERE
     _load_month = PARSE_DATE('%Y-%m', '${loadMonth}')
 )

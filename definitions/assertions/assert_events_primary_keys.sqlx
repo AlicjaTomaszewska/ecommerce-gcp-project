@@ -8,7 +8,7 @@ config {
 SELECT
   event_id
 FROM
-  ${ref("events")}
+  ${ref("silver", "fct_events")}
 WHERE
   event_id IS NULL
   OR user_id IS NULL

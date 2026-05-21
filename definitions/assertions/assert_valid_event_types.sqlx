@@ -8,6 +8,6 @@ config {
 SELECT
   event_type
 FROM
-  ${ref("events")}
+  ${ref("silver", "fct_events")}
 WHERE
   event_type NOT IN ('view', 'cart', 'purchase')

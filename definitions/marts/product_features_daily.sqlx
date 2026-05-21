@@ -26,7 +26,7 @@ WITH windowed_events AS (
     brand,
     event_ts
   FROM
-    ${ref("events")}
+    ${ref("silver", "fct_events")}
   WHERE
     is_valid_event
     AND event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 30 DAY)
@@ -40,7 +40,7 @@ latest_attributes AS (
     ARRAY_AGG(brand IGNORE NULLS ORDER BY event_ts DESC LIMIT 1)[SAFE_OFFSET(0)] AS product_brand,
     ARRAY_AGG(price IGNORE NULLS ORDER BY event_ts DESC LIMIT 1)[SAFE_OFFSET(0)] AS product_price
   FROM
-    ${ref("events")}
+    ${ref("silver", "fct_events")}
   WHERE
     is_valid_event
     AND event_date < DATE('${snapshotDate}')

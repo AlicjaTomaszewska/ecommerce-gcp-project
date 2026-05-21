@@ -3,7 +3,10 @@ defaultLocation: europe-central2
 defaultDataset: silver
 defaultAssertionDataset: dataform_assertions
 vars:
-  snapshot_date: "2021-03-01"
+  # Calendar month being loaded (YYYY-MM). Change before each monthly run.
+  load_month: "2020-10"
+  # First day of the month AFTER load_month; used for gold 30d snapshots.
+  snapshot_date: "2020-11-01"
   bronze_dataset: bronze
   silver_dataset: silver
   gold_dataset: gold

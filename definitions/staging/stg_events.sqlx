@@ -1,17 +1,25 @@
 js {
-  const { snapshotDate } = require("includes/constants");
+  const { loadMonth } = require("includes/constants");
+  const monthPartitionFilter =
+    "event_date >= PARSE_DATE('%Y-%m', '" +
+    loadMonth +
+    "') AND event_date < DATE_ADD(PARSE_DATE('%Y-%m', '" +
+    loadMonth +
+    "'), INTERVAL 1 MONTH)";
 }
 
 config {
-  type: "table",
+  type: "incremental",
   schema: dataform.projectConfig.vars.silver_dataset,
   name: "events",
-  description: "Cleaned and typed e-commerce events.",
+  description: "Cleaned and typed e-commerce events. Incremental by calendar month (load_month var).",
   tags: ["silver"],
   bigquery: {
     partitionBy: "event_date",
-    clusterBy: ["user_id", "product_id", "user_session"]
-  }
+    clusterBy: ["user_id", "product_id", "user_session"],
+    updatePartitionFilter: monthPartitionFilter
+  },
+  uniqueKey: ["event_id"]
 }
 
 WITH parsed AS (
@@ -46,10 +54,12 @@ WITH parsed AS (
     _source_uri,
     _ingested_at,
     _load_id,
+    _load_month
   FROM
     ${ref("raw_events")}
   WHERE
-    event_time_raw IS NOT NULL
+    _load_month = PARSE_DATE('%Y-%m', '${loadMonth}')
+    AND event_time_raw IS NOT NULL
     AND event_type_raw IS NOT NULL
     AND product_id_raw IS NOT NULL
     AND user_id_raw IS NOT NULL
@@ -82,6 +92,7 @@ SELECT
   _source_uri,
   _ingested_at,
   _load_id,
+  _load_month,
   CURRENT_TIMESTAMP() AS _loaded_at
 FROM
   parsed

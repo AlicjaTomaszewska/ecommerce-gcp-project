@@ -11,9 +11,10 @@ CREATE OR REPLACE TABLE bronze.raw_events (
   _source_uri STRING,
   _ingested_at TIMESTAMP,
   _load_id STRING,
+  _load_month DATE,
   _row_number INT64
 )
-PARTITION BY DATE(_ingested_at)
+PARTITION BY _load_month
 OPTIONS (
-  description = "Raw rows from events.csv before Dataform transformations."
+  description = "Raw e-commerce events. One partition per calendar month (_load_month). Reload month = DELETE + INSERT for that partition."
 );

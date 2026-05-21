@@ -1,0 +1,32 @@
+[
+  {
+    "load_month": "2020-10",
+    "snapshot_date": "2020-11-01",
+    "file": "events_2020-10.csv",
+    "gcs_uri": "gs://ecommerce-bucket-csv-files/events/month=2020-10/events_2020-10.csv"
+  },
+  {
+    "load_month": "2020-11",
+    "snapshot_date": "2020-12-01",
+    "file": "events_2020-11.csv",
+    "gcs_uri": "gs://ecommerce-bucket-csv-files/events/month=2020-11/events_2020-11.csv"
+  },
+  {
+    "load_month": "2020-12",
+    "snapshot_date": "2021-01-01",
+    "file": "events_2020-12.csv",
+    "gcs_uri": "gs://ecommerce-bucket-csv-files/events/month=2020-12/events_2020-12.csv"
+  },
+  {
+    "load_month": "2021-01",
+    "snapshot_date": "2021-02-01",
+    "file": "events_2021-01.csv",
+    "gcs_uri": "gs://ecommerce-bucket-csv-files/events/month=2021-01/events_2021-01.csv"
+  },
+  {
+    "load_month": "2021-02",
+    "snapshot_date": "2021-03-01",
+    "file": "events_2021-02.csv",
+    "gcs_uri": "gs://ecommerce-bucket-csv-files/events/month=2021-02/events_2021-02.csv"
+  }
+]

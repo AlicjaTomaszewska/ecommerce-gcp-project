@@ -1,0 +1,24 @@
+js {
+  const { loadMonth } = require("includes/constants");
+}
+
+config {
+  type: "assertion",
+  schema: dataform.projectConfig.defaultAssertionDataset,
+  name: "assert_load_month_in_bronze",
+  tags: ["assertions"]
+}
+
+SELECT
+  error
+FROM (
+  SELECT
+    CONCAT('No bronze rows for load_month=', '${loadMonth}') AS error,
+    COUNT(*) AS row_count
+  FROM
+    ${ref("raw_events")}
+  WHERE
+    _load_month = PARSE_DATE('%Y-%m', '${loadMonth}')
+)
+WHERE
+  row_count = 0

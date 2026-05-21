@@ -3,5 +3,5 @@ config {
   name: "raw_events",
   database: dataform.projectConfig.defaultProject,
   schema: dataform.projectConfig.vars.bronze_dataset,
-  description: "Raw events loaded manually into bronze.raw_events (outside Dataform)."
+  description: "Raw events in bronze.raw_events, one partition per load_month (monthly loads)."
 }

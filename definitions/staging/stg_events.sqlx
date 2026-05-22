@@ -10,13 +10,7 @@ config {
   tags: ["silver"],
   bigquery: {
     partitionBy: "event_date",
-    clusterBy: ["user_id", "product_id", "user_session"],
-    updatePartitionFilter:
-      "T.event_date >= PARSE_DATE('%Y-%m', '" +
-      dataform.projectConfig.vars.load_month +
-      "') AND T.event_date < DATE_ADD(PARSE_DATE('%Y-%m', '" +
-      dataform.projectConfig.vars.load_month +
-      "'), INTERVAL 1 MONTH)"
+    clusterBy: ["user_id", "product_id", "user_session"]
   },
   uniqueKey: ["event_id"]
 }

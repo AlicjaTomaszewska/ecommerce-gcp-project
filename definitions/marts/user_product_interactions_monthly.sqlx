@@ -11,7 +11,7 @@ config {
   bigquery: {
     partitionBy: "snapshot_date",
     clusterBy: ["user_id", "product_id"],
-    updatePartitionFilter: `snapshot_date = DATE('${snapshotDate}')`
+    updatePartitionFilter: "snapshot_date = DATE('" + dataform.projectConfig.vars.snapshot_date + "')"
   },
   uniqueKey: ["snapshot_date", "user_id", "product_id"]
 }

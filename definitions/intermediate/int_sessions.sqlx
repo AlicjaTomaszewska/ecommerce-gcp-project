@@ -18,8 +18,6 @@ WITH ordered_events AS (
   ) AS event_rank_in_session
   FROM
     ${ref("silver", "fct_events")} AS e
-  WHERE
-    is_valid_event
 )
 
 SELECT

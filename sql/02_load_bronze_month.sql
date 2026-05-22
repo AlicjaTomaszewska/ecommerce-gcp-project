@@ -1,6 +1,7 @@
 -- Monthly bronze load (idempotent): set load_month and source URI, then run.
 -- load_month: calendar month in the file (YYYY-MM).
--- snapshot_date for Dataform after this load: first day of the next month (e.g. 2020-10 -> 2021-03-01 is wrong; use 2020-11-01).
+-- snapshot_date for Dataform after this load: first day of the next month
+-- (e.g. load_month 2020-10 -> snapshot_date 2020-11-01).
 
 DECLARE load_month STRING DEFAULT '2020-10';
 DECLARE gcs_uri STRING DEFAULT 'gs://ecommerce-bucket-csv-files/events/month=2020-10/events_2020-10.csv';
@@ -44,8 +45,7 @@ INSERT INTO bronze.raw_events (
   _source_uri,
   _ingested_at,
   _load_id,
-  _load_month,
-  _row_number
+  _load_month
 )
 SELECT
   event_time,
@@ -60,10 +60,7 @@ SELECT
   '%s' AS _source_uri,
   CURRENT_TIMESTAMP() AS _ingested_at,
   '%s' AS _load_id,
-  DATE('%s') AS _load_month,
-  ROW_NUMBER() OVER (
-    ORDER BY event_time, product_id, user_id, user_session
-  ) AS _row_number
+  DATE('%s') AS _load_month
 FROM
   bronze.%s
 """,
@@ -72,5 +69,5 @@ FROM
   CAST(load_month_date AS STRING),
   external_table);
 
--- Optional: drop temporary external table after load
+-- Optional cleanup of the temporary external table:
 -- EXECUTE IMMEDIATE FORMAT('DROP TABLE IF EXISTS bronze.%s', external_table);

@@ -11,8 +11,7 @@ CREATE OR REPLACE TABLE bronze.raw_events (
   _source_uri STRING,
   _ingested_at TIMESTAMP,
   _load_id STRING,
-  _load_month DATE,
-  _row_number INT64
+  _load_month DATE
 )
 PARTITION BY _load_month
 OPTIONS (

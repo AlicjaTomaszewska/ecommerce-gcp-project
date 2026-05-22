@@ -6,7 +6,7 @@ config {
   type: "incremental",
   schema: dataform.projectConfig.vars.silver_dataset,
   name: "fct_events",
-  description: "Cleaned and typed e-commerce events. Incremental by calendar month (load_month var).",
+  description: "Cleaned, typed and deduplicated e-commerce events. One row per natural event key. Only valid events are kept (no is_valid flag).",
   tags: ["silver"],
   bigquery: {
     partitionBy: "event_date",
@@ -23,23 +23,6 @@ config {
 
 WITH parsed AS (
   SELECT
-    TO_HEX(
-      SHA256(
-        CONCAT(
-          COALESCE(event_time_raw, ''),
-          '|',
-          COALESCE(event_type_raw, ''),
-          '|',
-          COALESCE(product_id_raw, ''),
-          '|',
-          COALESCE(user_id_raw, ''),
-          '|',
-          COALESCE(user_session_raw, ''),
-          '|',
-          COALESCE(CAST(_row_number AS STRING), '')
-        )
-      )
-    ) AS event_id,
     TIMESTAMP(REPLACE(event_time_raw, ' UTC', '')) AS event_ts,
     DATE(TIMESTAMP(REPLACE(event_time_raw, ' UTC', ''))) AS event_date,
     LOWER(TRIM(event_type_raw)) AS event_type,
@@ -49,7 +32,7 @@ WITH parsed AS (
     NULLIF(LOWER(TRIM(brand_raw)), '') AS brand,
     SAFE_CAST(price_raw AS NUMERIC) AS price,
     SAFE_CAST(user_id_raw AS INT64) AS user_id,
-    TRIM(user_session_raw) AS user_session,
+    NULLIF(TRIM(user_session_raw), '') AS user_session,
     _source_uri,
     _ingested_at,
     _load_id,
@@ -58,15 +41,24 @@ WITH parsed AS (
     ${ref("bronze", "raw_events")}
   WHERE
     _load_month = PARSE_DATE('%Y-%m', '${loadMonth}')
-    AND event_time_raw IS NOT NULL
-    AND event_type_raw IS NOT NULL
-    AND product_id_raw IS NOT NULL
-    AND user_id_raw IS NOT NULL
-    AND user_session_raw IS NOT NULL
 )
 
 SELECT
-  event_id,
+  TO_HEX(
+    SHA256(
+      CONCAT(
+        CAST(UNIX_MICROS(event_ts) AS STRING),
+        '|',
+        event_type,
+        '|',
+        CAST(product_id AS STRING),
+        '|',
+        CAST(user_id AS STRING),
+        '|',
+        user_session
+      )
+    )
+  ) AS event_id,
   event_ts,
   event_date,
   event_type,
@@ -80,14 +72,6 @@ SELECT
   price,
   user_id,
   user_session,
-  (
-    event_ts IS NOT NULL
-    AND event_type IN ('view', 'cart', 'purchase')
-    AND product_id IS NOT NULL
-    AND user_id IS NOT NULL
-    AND user_session IS NOT NULL
-    AND (price IS NULL OR price >= 0)
-  ) AS is_valid_event,
   _source_uri,
   _ingested_at,
   _load_id,
@@ -96,4 +80,14 @@ SELECT
 FROM
   parsed
 WHERE
-  event_type IN ('view', 'cart', 'purchase')
+  event_ts IS NOT NULL
+  AND event_type IN ('view', 'cart', 'purchase')
+  AND product_id IS NOT NULL
+  AND user_id IS NOT NULL
+  AND user_session IS NOT NULL
+  AND (price IS NULL OR price >= 0)
+QUALIFY
+  ROW_NUMBER() OVER (
+    PARTITION BY event_ts, event_type, product_id, user_id, user_session
+    ORDER BY _ingested_at DESC
+  ) = 1

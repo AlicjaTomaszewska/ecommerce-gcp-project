@@ -29,8 +29,7 @@ WITH windowed_events AS (
   FROM
     ${ref("silver", "fct_events")}
   WHERE
-    is_valid_event
-    AND event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 30 DAY)
+    event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 30 DAY)
     AND event_date < DATE('${snapshotDate}')
 ),
 
@@ -41,8 +40,7 @@ last_purchase AS (
   FROM
     ${ref("silver", "fct_events")}
   WHERE
-    is_valid_event
-    AND event_type = 'purchase'
+    event_type = 'purchase'
     AND event_date < DATE('${snapshotDate}')
   GROUP BY
     user_id

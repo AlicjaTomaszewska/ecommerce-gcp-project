@@ -11,7 +11,7 @@ config {
   bigquery: {
     partitionBy: "snapshot_date",
     clusterBy: ["user_id"],
-    updatePartitionFilter: "snapshot_date = DATE('${snapshotDate}')"
+    updatePartitionFilter: `snapshot_date = DATE('${snapshotDate}')`
   },
   uniqueKey: ["snapshot_date", "user_id"]
 }

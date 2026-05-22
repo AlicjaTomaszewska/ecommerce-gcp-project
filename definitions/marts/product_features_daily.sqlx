@@ -22,7 +22,9 @@ WITH windowed_events AS (
     event_type,
     user_id,
     price,
-    category_code,
+    category_l1,
+    category_l2,
+    category_l3,
     brand,
     event_ts
   FROM
@@ -35,7 +37,16 @@ WITH windowed_events AS (
 latest_attributes AS (
   SELECT
     product_id,
-    ARRAY_AGG(category_code IGNORE NULLS ORDER BY event_ts DESC LIMIT 1)[SAFE_OFFSET(0)] AS product_category_code,
+    ARRAY_AGG(
+      IF(
+        category_l1 IS NOT NULL,
+        STRUCT(category_l1, category_l2, category_l3),
+        NULL
+      )
+      IGNORE NULLS
+      ORDER BY event_ts DESC
+      LIMIT 1
+    )[SAFE_OFFSET(0)] AS latest_category,
     ARRAY_AGG(brand IGNORE NULLS ORDER BY event_ts DESC LIMIT 1)[SAFE_OFFSET(0)] AS product_brand,
     ARRAY_AGG(price IGNORE NULLS ORDER BY event_ts DESC LIMIT 1)[SAFE_OFFSET(0)] AS product_price
   FROM
@@ -59,7 +70,9 @@ SELECT
   a.product_price,
   AVG(w.price) AS product_avg_price_30d,
   COUNT(DISTINCT IF(w.event_type = 'purchase', w.user_id, NULL)) AS product_unique_buyers_30d,
-  a.product_category_code,
+  a.latest_category.category_l1 AS product_category_l1,
+  a.latest_category.category_l2 AS product_category_l2,
+  a.latest_category.category_l3 AS product_category_l3,
   a.product_brand
 FROM
   windowed_events AS w
@@ -70,5 +83,5 @@ GROUP BY
   snapshot_date,
   w.product_id,
   a.product_price,
-  a.product_category_code,
+  a.latest_category,
   a.product_brand

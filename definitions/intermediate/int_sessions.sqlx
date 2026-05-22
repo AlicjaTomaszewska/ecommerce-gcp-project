@@ -11,11 +11,11 @@ config {
 
 WITH ordered_events AS (
   SELECT
-  e.*,
-  ROW_NUMBER() OVER (
-    PARTITION BY user_session, user_id
-    ORDER BY event_ts, event_id
-  ) AS event_rank_in_session
+    e.*,
+    ROW_NUMBER() OVER (
+      PARTITION BY user_session, user_id
+      ORDER BY event_ts, event_id
+    ) AS event_rank_in_session
   FROM
     ${ref("silver", "fct_events")} AS e
 )
@@ -27,7 +27,9 @@ SELECT
   DATE(MIN(event_ts)) AS session_start_date,
   MAX(IF(event_rank_in_session = 1, event_type, NULL)) AS first_event_type,
   MAX(IF(event_rank_in_session = 1, product_id, NULL)) AS first_product_id,
-  MAX(IF(event_rank_in_session = 1, category_code, NULL)) AS first_category_code,
+  MAX(IF(event_rank_in_session = 1, category_l1, NULL)) AS first_category_l1,
+  MAX(IF(event_rank_in_session = 1, category_l2, NULL)) AS first_category_l2,
+  MAX(IF(event_rank_in_session = 1, category_l3, NULL)) AS first_category_l3,
   MAX(IF(event_rank_in_session = 1, brand, NULL)) AS first_brand,
   MAX(IF(event_rank_in_session = 1, price, NULL)) AS first_price,
   COUNT(*) AS event_count,

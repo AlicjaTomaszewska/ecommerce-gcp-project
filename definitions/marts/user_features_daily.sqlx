@@ -22,7 +22,9 @@ WITH windowed_events AS (
     user_session,
     event_type,
     price,
-    category_code,
+    category_l1,
+    category_l2,
+    category_l3,
     brand,
     event_ts,
     event_date
@@ -49,22 +51,28 @@ last_purchase AS (
 favorite_category AS (
   SELECT
     user_id,
-    category_code AS user_favorite_category_30d
+    category_l1,
+    category_l2,
+    category_l3
   FROM (
     SELECT
       user_id,
-      category_code,
+      category_l1,
+      category_l2,
+      category_l3,
       ROW_NUMBER() OVER (
         PARTITION BY user_id
-        ORDER BY COUNT(*) DESC, category_code
+        ORDER BY COUNT(*) DESC, category_l1, category_l2, category_l3
       ) AS category_rank
     FROM
       windowed_events
     WHERE
-      category_code IS NOT NULL
+      category_l1 IS NOT NULL
     GROUP BY
       user_id,
-      category_code
+      category_l1,
+      category_l2,
+      category_l3
   )
   WHERE
     category_rank = 1
@@ -106,7 +114,9 @@ SELECT
   ) AS user_conversion_rate_30d,
   COUNT(DISTINCT w.user_session) AS user_sessions_30d,
   AVG(IF(w.event_type = 'purchase', w.price, NULL)) AS user_avg_price_purchased,
-  fc.user_favorite_category_30d,
+  fc.category_l1 AS user_favorite_category_l1_30d,
+  fc.category_l2 AS user_favorite_category_l2_30d,
+  fc.category_l3 AS user_favorite_category_l3_30d,
   fb.user_favorite_brand_30d,
   DATE_DIFF(DATE('${snapshotDate}'), DATE(lp.last_purchase_ts), DAY) AS days_since_last_purchase,
   SAFE_DIVIDE(
@@ -127,6 +137,8 @@ LEFT JOIN
 GROUP BY
   snapshot_date,
   w.user_id,
-  fc.user_favorite_category_30d,
+  fc.category_l1,
+  fc.category_l2,
+  fc.category_l3,
   fb.user_favorite_brand_30d,
   lp.last_purchase_ts

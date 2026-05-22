@@ -5,8 +5,8 @@ js {
 config {
   type: "incremental",
   schema: dataform.projectConfig.vars.gold_dataset,
-  name: "user_product_interactions_daily",
-  description: "Daily snapshots of user-product interaction history.",
+  name: "user_product_interactions_monthly",
+  description: "Monthly snapshots of user-product interaction history. Window: previous calendar month before snapshot_date.",
   tags: ["gold"],
   bigquery: {
     partitionBy: "snapshot_date",
@@ -26,7 +26,7 @@ WITH windowed_events AS (
   FROM
     ${ref("silver", "fct_events")}
   WHERE
-    event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 30 DAY)
+    event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 1 MONTH)
     AND event_date < DATE('${snapshotDate}')
 ),
 
@@ -49,16 +49,16 @@ SELECT
   DATE('${snapshotDate}') AS snapshot_date,
   w.user_id,
   w.product_id,
-  COUNTIF(w.event_type = 'view') AS ui_view_count,
-  COUNTIF(w.event_type = 'cart') AS ui_cart_count,
-  COUNTIF(w.event_type = 'purchase') AS ui_purchase_count,
+  COUNTIF(w.event_type = 'view') AS ui_view_count_last_month,
+  COUNTIF(w.event_type = 'cart') AS ui_cart_count_last_month,
+  COUNTIF(w.event_type = 'purchase') AS ui_purchase_count_last_month,
   DATE_DIFF(DATE('${snapshotDate}'), DATE(lv.last_view_ts), DAY) AS ui_days_since_last_view,
   EXP(-0.05 * DATE_DIFF(DATE('${snapshotDate}'), DATE(lv.last_view_ts), DAY)) AS ui_recency_score,
   (
     COUNTIF(w.event_type = 'view') * 1
     + COUNTIF(w.event_type = 'cart') * 3
     + COUNTIF(w.event_type = 'purchase') * 5
-  ) AS ui_interaction_score
+  ) AS ui_interaction_score_last_month
 FROM
   windowed_events AS w
 LEFT JOIN

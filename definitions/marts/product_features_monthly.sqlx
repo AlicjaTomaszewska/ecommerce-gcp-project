@@ -5,8 +5,8 @@ js {
 config {
   type: "incremental",
   schema: dataform.projectConfig.vars.gold_dataset,
-  name: "product_features_daily",
-  description: "Daily snapshots of product features with a window of 30 days prior to the snapshot date.",
+  name: "product_features_monthly",
+  description: "Monthly product feature snapshots. Window: previous calendar month before snapshot_date.",
   tags: ["gold"],
   bigquery: {
     partitionBy: "snapshot_date",
@@ -22,15 +22,11 @@ WITH windowed_events AS (
     event_type,
     user_id,
     price,
-    category_l1,
-    category_l2,
-    category_l3,
-    brand,
     event_ts
   FROM
     ${ref("silver", "fct_events")}
   WHERE
-    event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 30 DAY)
+    event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 1 MONTH)
     AND event_date < DATE('${snapshotDate}')
 ),
 
@@ -60,16 +56,16 @@ latest_attributes AS (
 SELECT
   DATE('${snapshotDate}') AS snapshot_date,
   w.product_id,
-  COUNTIF(w.event_type = 'view') AS product_view_count_30d,
-  COUNTIF(w.event_type = 'purchase') AS product_purchase_count_30d,
-  COUNTIF(w.event_type = 'cart') AS product_cart_count_30d,
+  COUNTIF(w.event_type = 'view') AS product_view_count_last_month,
+  COUNTIF(w.event_type = 'purchase') AS product_purchase_count_last_month,
+  COUNTIF(w.event_type = 'cart') AS product_cart_count_last_month,
   SAFE_DIVIDE(
     COUNTIF(w.event_type = 'purchase'),
     NULLIF(COUNTIF(w.event_type = 'view'), 0)
-  ) AS product_conversion_rate,
+  ) AS product_conversion_rate_last_month,
   a.product_price,
-  AVG(w.price) AS product_avg_price_30d,
-  COUNT(DISTINCT IF(w.event_type = 'purchase', w.user_id, NULL)) AS product_unique_buyers_30d,
+  AVG(w.price) AS product_avg_price_last_month,
+  COUNT(DISTINCT IF(w.event_type = 'purchase', w.user_id, NULL)) AS product_unique_buyers_last_month,
   a.latest_category.category_l1 AS product_category_l1,
   a.latest_category.category_l2 AS product_category_l2,
   a.latest_category.category_l3 AS product_category_l3,

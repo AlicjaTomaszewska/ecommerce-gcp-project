@@ -5,8 +5,8 @@ js {
 config {
   type: "incremental",
   schema: dataform.projectConfig.vars.gold_dataset,
-  name: "user_features_daily",
-  description: "Daily snapshots of user features with a window of 30 days prior to the snapshot date.",
+  name: "user_features_monthly",
+  description: "Monthly user feature snapshots. Window: previous calendar month before snapshot_date.",
   tags: ["gold"],
   bigquery: {
     partitionBy: "snapshot_date",
@@ -31,7 +31,7 @@ WITH windowed_events AS (
   FROM
     ${ref("silver", "fct_events")}
   WHERE
-    event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 30 DAY)
+    event_date >= DATE_SUB(DATE('${snapshotDate}'), INTERVAL 1 MONTH)
     AND event_date < DATE('${snapshotDate}')
 ),
 
@@ -81,7 +81,7 @@ favorite_category AS (
 favorite_brand AS (
   SELECT
     user_id,
-    brand AS user_favorite_brand_30d
+    brand AS user_favorite_brand_last_month
   FROM (
     SELECT
       user_id,
@@ -105,24 +105,24 @@ favorite_brand AS (
 SELECT
   DATE('${snapshotDate}') AS snapshot_date,
   w.user_id,
-  COUNTIF(w.event_type = 'purchase') AS user_purchase_count_30d,
-  COUNTIF(w.event_type = 'view') AS user_view_count_30d,
-  COUNTIF(w.event_type = 'cart') AS user_cart_count_30d,
+  COUNTIF(w.event_type = 'purchase') AS user_purchase_count_last_month,
+  COUNTIF(w.event_type = 'view') AS user_view_count_last_month,
+  COUNTIF(w.event_type = 'cart') AS user_cart_count_last_month,
   SAFE_DIVIDE(
     COUNTIF(w.event_type = 'purchase'),
     NULLIF(COUNTIF(w.event_type = 'view'), 0)
-  ) AS user_conversion_rate_30d,
-  COUNT(DISTINCT w.user_session) AS user_sessions_30d,
-  AVG(IF(w.event_type = 'purchase', w.price, NULL)) AS user_avg_price_purchased,
-  fc.category_l1 AS user_favorite_category_l1_30d,
-  fc.category_l2 AS user_favorite_category_l2_30d,
-  fc.category_l3 AS user_favorite_category_l3_30d,
-  fb.user_favorite_brand_30d,
+  ) AS user_conversion_rate_last_month,
+  COUNT(DISTINCT w.user_session) AS user_sessions_last_month,
+  AVG(IF(w.event_type = 'purchase', w.price, NULL)) AS user_avg_price_purchased_last_month,
+  fc.category_l1 AS user_favorite_category_l1_last_month,
+  fc.category_l2 AS user_favorite_category_l2_last_month,
+  fc.category_l3 AS user_favorite_category_l3_last_month,
+  fb.user_favorite_brand_last_month,
   DATE_DIFF(DATE('${snapshotDate}'), DATE(lp.last_purchase_ts), DAY) AS days_since_last_purchase,
   SAFE_DIVIDE(
     COUNTIF(w.event_type = 'cart') - COUNTIF(w.event_type = 'purchase'),
     NULLIF(COUNTIF(w.event_type = 'cart'), 0)
-  ) AS user_cart_abandon_rate_30d
+  ) AS user_cart_abandon_rate_last_month
 FROM
   windowed_events AS w
 LEFT JOIN
@@ -140,5 +140,5 @@ GROUP BY
   fc.category_l1,
   fc.category_l2,
   fc.category_l3,
-  fb.user_favorite_brand_30d,
+  fb.user_favorite_brand_last_month,
   lp.last_purchase_ts

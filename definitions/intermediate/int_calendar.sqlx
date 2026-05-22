@@ -18,7 +18,6 @@ SELECT
   calendar_date,
   EXTRACT(MONTH FROM calendar_date) AS month,
   EXTRACT(ISOWEEK FROM calendar_date) AS week_of_year,
-  EXTRACT(DAYOFWEEK FROM calendar_date) AS day_of_week,
   CAST(NULL AS INT64) AS hour_of_day,
   EXTRACT(DAYOFWEEK FROM calendar_date) IN (1, 7) AS is_weekend,
   DATE_DIFF(LAST_DAY(calendar_date, MONTH), calendar_date, DAY) AS days_to_end_of_month

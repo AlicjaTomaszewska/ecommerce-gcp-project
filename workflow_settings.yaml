@@ -4,9 +4,9 @@ defaultDataset: silver
 defaultAssertionDataset: dataform_assertions
 vars:
   # Calendar month being loaded (YYYY-MM). Change before each monthly run.
-  load_month: "2020-11"
+  load_month: "2020-12"
   # First day of the month AFTER load_month; used for gold 1 month snapshots.
-  snapshot_date: "2020-12-01"
+  snapshot_date: "2021-01-01"
   bronze_dataset: bronze
   silver_dataset: silver
   gold_dataset: gold

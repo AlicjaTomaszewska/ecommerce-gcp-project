@@ -1,0 +1,8 @@
+{
+  "gcp_project_id": "ecommerce-project-496110",
+  "gcs_bucket": "ecommerce-bucket-csv-files",
+  "bq_location": "europe-central2",
+  "dataform_repository": "ecommerce-pipeline",
+  "dataform_location": "europe-central2",
+  "dataform_git_branch": "main"
+}

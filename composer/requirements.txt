@@ -1,0 +1,3 @@
+# Composer 2 ships with apache-airflow-providers-google which includes the
+# Dataform, BigQuery and GCS operators used by the DAG. No extra PyPI
+# packages are required for this orchestration.

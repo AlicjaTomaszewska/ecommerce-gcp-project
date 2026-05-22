@@ -3,8 +3,8 @@
 -- snapshot_date for Dataform after this load: first day of the next month
 -- (e.g. load_month 2020-10 -> snapshot_date 2020-11-01).
 
-DECLARE load_month STRING DEFAULT '2020-10';
-DECLARE gcs_uri STRING DEFAULT 'gs://ecommerce-bucket-csv-files/events/month=2020-10/events_2020-10.csv';
+DECLARE load_month STRING DEFAULT '2020-11';
+DECLARE gcs_uri STRING DEFAULT 'gs://ecommerce-bucket-csv-files/events_2020-11.csv';
 DECLARE load_month_date DATE DEFAULT PARSE_DATE('%Y-%m', load_month);
 DECLARE load_id STRING DEFAULT CONCAT('monthly_', load_month);
 DECLARE external_table STRING DEFAULT CONCAT('raw_events_external_', REPLACE(load_month, '-', '_'));

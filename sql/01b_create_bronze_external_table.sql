@@ -1,8 +1,8 @@
 -- Replace @LOAD_MONTH (YYYY-MM) and @GCS_URI before running.
 -- Example URI: gs://ecommerce-bucket-csv-files/events/month=2020-10/events_2020-10.csv
 
-DECLARE load_month STRING DEFAULT '2020-10';
-DECLARE gcs_uri STRING DEFAULT 'gs://ecommerce-bucket-csv-files/events/month=2020-10/events_2020-10.csv';
+DECLARE load_month STRING DEFAULT '2020-11';
+DECLARE gcs_uri STRING DEFAULT 'gs://ecommerce-bucket-csv-files/events_2020-11.csv';
 
 EXECUTE IMMEDIATE FORMAT("""
 CREATE OR REPLACE EXTERNAL TABLE bronze.raw_events_external_%s (

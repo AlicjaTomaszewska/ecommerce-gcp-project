@@ -12,9 +12,9 @@ config {
     partitionBy: "event_date",
     clusterBy: ["user_id", "product_id", "user_session"],
     updatePartitionFilter:
-      "event_date >= PARSE_DATE('%Y-%m', '" +
+      "T.event_date >= PARSE_DATE('%Y-%m', '" +
       dataform.projectConfig.vars.load_month +
-      "') AND event_date < DATE_ADD(PARSE_DATE('%Y-%m', '" +
+      "') AND T.event_date < DATE_ADD(PARSE_DATE('%Y-%m', '" +
       dataform.projectConfig.vars.load_month +
       "'), INTERVAL 1 MONTH)"
   },

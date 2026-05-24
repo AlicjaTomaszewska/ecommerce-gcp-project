@@ -4,5 +4,5 @@
   "bq_location": "europe-central2",
   "dataform_repository": "ecommerce-pipeline",
   "dataform_location": "europe-central2",
-  "dataform_git_branch": "main"
+  "dataform_git_branch": "master"
 }

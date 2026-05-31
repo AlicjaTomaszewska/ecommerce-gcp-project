@@ -1,0 +1,10 @@
+google-cloud-bigquery
+google-cloud-bigquery-storage
+joblib
+matplotlib
+mlflow
+numpy
+pandas
+python-dotenv
+scikit-learn
+xgboost

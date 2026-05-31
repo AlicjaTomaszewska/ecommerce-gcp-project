@@ -175,6 +175,14 @@ composer/                      - Cloud Composer DAG + helpers
   variables_example.json
   requirements.txt
   README.md                    - Composer-specific setup
+ml/                            - downstream ML pipeline for product demand prediction
+  src/data/bigquery_loader.py   - reads gold feature marts from BigQuery
+  src/features/build_features.py
+  src/split/snapshot_split.py
+  src/models/                  - classifier, regressor and hurdle model code
+  src/training/train_pipeline.py
+  requirements.txt
+  README.md                    - ML-specific setup and run instructions
 package.json                   - optional, for local Dataform CLI use
 ```
 

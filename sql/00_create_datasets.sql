@@ -21,3 +21,9 @@ OPTIONS (
   location = "europe-central2",
   description = "Dataform quality assertion results."
 );
+
+CREATE SCHEMA IF NOT EXISTS mlops_monitoring
+OPTIONS (
+  location = "europe-central2",
+  description = "MLOps monitoring logs for model predictions."
+);

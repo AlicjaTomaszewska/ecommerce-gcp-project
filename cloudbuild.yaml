@@ -1,0 +1,55 @@
+steps:
+  # Step 1: Build the container image using Dockerfile.serve
+  # We use the COMMIT_SHA to uniquely identify this exact build version
+  # We also tag it as 'latest' for convenience
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-serving-api'
+    args: 
+      - 'build'
+      - '-f'
+      - 'Dockerfile.serve'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/demand-forecast-api:$COMMIT_SHA'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/demand-forecast-api:latest'
+      - '.'
+
+  # Step 2: Push the container image to Google Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-serving-api'
+    args: 
+      - 'push'
+      - '--all-tags'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/demand-forecast-api'
+
+  # Step 3: Deploy the container to Google Cloud Run
+  # This makes the API accessible via an HTTPS URL
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-to-cloud-run'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'demand-forecast-api'
+      - '--image'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/demand-forecast-api:$COMMIT_SHA'
+      - '--region'
+      - '$_REGION'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated' # Set to '--no-allow-unauthenticated' if only specific GCP services should call it
+      - '--port'
+      - '8000' # Matches the EXPOSE port in our Dockerfile.serve
+
+# Inform Cloud Build which images were generated during this run
+images:
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/demand-forecast-api:$COMMIT_SHA'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/demand-forecast-api:latest'
+
+# Variables that can be overwritten by trigger settings in the GCP Console
+substitutions:
+  _REGION: 'europe-central2' # Default: Warsaw. Change to europe-west1/europe-west4 if needed
+  _REPOSITORY: 'mlops-repo'  # The name of the Artifact Registry repository
+
+options:
+  logging: CLOUD_LOGGING_ONLY

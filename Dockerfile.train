@@ -1,0 +1,23 @@
+# Base image for the training process (often requires more tools than the production image)
+FROM python:3.11-slim
+
+# Install required system packages and uv
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install uv
+
+WORKDIR /app
+
+# Copy the defined project dependencies
+COPY pyproject.toml .
+
+# Install necessary packages via uv
+RUN uv pip install --system fastapi uvicorn pydantic scikit-learn mlflow pandas autogluon
+
+# Copy the code responsible for model training (to be provided by the ML Engineer)
+# COPY src/train /app/train
+
+# Starting point for Vertex AI Custom Training Job.
+# For now, we place a placeholder; the ML engineer will overwrite this file or point to theirs in the entrypoint.
+CMD ["echo", "This is where the script execution will go, e.g., python -m train.pipeline"]

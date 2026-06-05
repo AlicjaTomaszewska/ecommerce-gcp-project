@@ -1,0 +1,21 @@
+[project]
+name = "ecommerce-mlops"
+version = "0.1.0"
+description = "MLOps platform for e-commerce (DataOps & ML Components)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
+    "pydantic>=2.7.0",
+    "scikit-learn>=1.5.0",
+    "mlflow>=2.14.0",
+    "pandas>=2.2.0",
+    "google-cloud-bigquery>=3.20.0",
+    "google-cloud-storage>=2.17.0",
+    "joblib>=1.4.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

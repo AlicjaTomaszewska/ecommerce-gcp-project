@@ -1,0 +1,24 @@
+# Use the official, lightweight Python image
+FROM python:3.11-slim
+
+# Install the uv package manager (as a faster replacement for pip)
+RUN pip install uv
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the dependency definitions
+COPY pyproject.toml .
+
+# Install dependencies using uv in the system environment
+# --system ensures uv doesn't create a virtualenv, which is not needed in a container
+RUN uv pip install --system fastapi uvicorn pydantic scikit-learn mlflow pandas google-cloud-storage joblib xgboost google-cloud-bigquery
+
+# Copy the entire application code (api directory)
+COPY src/api /app/api
+
+# Expose the port on which the application listens
+EXPOSE 8000
+
+# Command to run the ASGI server using Uvicorn
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

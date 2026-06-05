@@ -1,11 +1,12 @@
 import numpy as np
 
 class HurdleModel:
-    def __init__(self, classifier, classifier_scaler, regressor, regressor_scaler):
+    def __init__(self, classifier, classifier_scaler, regressor, regressor_scaler, feature_names=None):
         self.classifier = classifier
         self.classifier_scaler = classifier_scaler
         self.regressor = regressor
         self.regressor_scaler = regressor_scaler
+        self.feature_names = feature_names
 
     def _apply(self, scaler, X):
         return scaler.transform(X) if scaler is not None else X

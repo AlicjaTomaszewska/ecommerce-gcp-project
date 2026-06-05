@@ -144,6 +144,7 @@ def main():
             classifier_scaler=best_clf_entry["scaler"],
             regressor=best_reg_entry["model"],
             regressor_scaler=best_reg_entry["scaler"],
+            feature_names=feature_cols,
         )
 
         val_p_nonzero = hurdle.predict_proba_nonzero(X_val)

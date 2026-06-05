@@ -1,4 +1,4 @@
 node_modules/
 .dataform/
 .DS_Store
-data/
+/data/

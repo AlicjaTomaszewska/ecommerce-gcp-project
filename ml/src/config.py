@@ -55,5 +55,6 @@ def ensure_directories() -> None:
     (ARTIFACT_DIR / "final_model").mkdir(parents=True, exist_ok=True)
 
 def setup_mlflow() -> None:
+    os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment(MLFLOW_EXPERIMENT)

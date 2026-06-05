@@ -75,7 +75,7 @@ def fetch_product_features_from_bq(product_id: str) -> dict:
     FROM `{GCP_PROJECT}.gold.product_features_monthly` p
     LEFT JOIN `{GCP_PROJECT}.gold.dim_calendar` c
         ON p.snapshot_date = c.calendar_date
-    WHERE p.product_id = @product_id
+    WHERE p.product_id = CAST(@product_id AS INT64)
     ORDER BY p.snapshot_date DESC
     LIMIT 1
     """.format(GCP_PROJECT=GCP_PROJECT)

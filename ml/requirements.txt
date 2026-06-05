@@ -8,3 +8,4 @@ pandas
 python-dotenv
 scikit-learn
 xgboost
+db-dtypes

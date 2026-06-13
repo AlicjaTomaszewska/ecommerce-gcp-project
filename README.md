@@ -1,11 +1,22 @@
-# E-commerce events: bronze -> silver -> gold on GCP
+# E-commerce MLOps/DataOps Platform on GCP
 
-Monthly batch data pipeline for an e-commerce events dataset
-(`events.csv`, Oct 2020 - Feb 2021). The pipeline ingests CSV files from
-Cloud Storage into BigQuery, cleans and deduplicates them in a silver layer
-with Dataform, and produces gold-layer feature marts that are consumed by
-downstream ML projects. Cloud Composer orchestrates everything on a monthly
-schedule and supports on-demand backfills.
+End-to-end platform for e-commerce product demand forecasting, built on
+Google Cloud Platform. The project covers three pillars:
+
+1. **DataOps** — monthly batch data pipeline that ingests CSV event files
+   from Cloud Storage into BigQuery, cleans and deduplicates them through
+   a medallion architecture (Bronze → Silver → Gold) with Dataform, and
+   produces feature marts consumed by ML training.
+2. **ML** — a two-stage Hurdle Model (classifier + regressor) trained on
+   gold-layer features to predict next-month product demand, tracked with
+   MLflow.
+3. **MLOps** — the trained model is uploaded to GCS, served via a FastAPI
+   application containerized with Docker, deployed serverlessly on Cloud
+   Run via Cloud Build, and every prediction is logged back to BigQuery
+   for monitoring — closing the MLOps feedback loop.
+
+Data source: `events.csv` (Oct 2020 – Feb 2021), e-commerce events
+(view, cart, purchase).
 
 ## Stack
 
@@ -15,27 +26,45 @@ schedule and supports on-demand backfills.
 | Warehouse | BigQuery |
 | Transformations | Dataform (silver + gold) |
 | Orchestration | Cloud Composer 2 / Airflow 2 |
+| ML training | scikit-learn, XGBoost, MLflow |
+| Model storage | Google Cloud Storage (decoupled from container) |
+| Serving API | FastAPI + Uvicorn |
+| Containerization | Docker |
+| Deployment pipeline | Cloud Build → Artifact Registry → Cloud Run |
+| Prediction monitoring | BigQuery (`mlops_monitoring.api_logs`) |
 | Source of truth for code | This repository |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    CSV[GCS events_YYYY-MM.csv]
+    CSV[GCS events CSV]
     BRZ[bronze.raw_events]
-    SLV[silver.fct_events, silver.sessions, silver.calendar_dates]
-    GLD[gold marts]
+    SLV[silver: fct_events, sessions, calendar]
+    GLD[gold feature marts]
+    TRN[ML Training Pipeline]
+    GCS_M[GCS Model Bucket]
+    API[FastAPI on Cloud Run]
+    MON[BigQuery api_logs]
 
     CSV --> BRZ --> SLV --> GLD
+    GLD --> TRN --> GCS_M --> API
+    API -->|async log| MON
+    API -->|fetch features| GLD
 
-    subgraph Orchestration
-        CMP[Composer DAG ecommerce_monthly]
+    subgraph DataOps
+        CSV
+        BRZ
+        SLV
+        GLD
     end
 
-    CMP --> CSV
-    CMP --> BRZ
-    CMP --> SLV
-    CMP --> GLD
+    subgraph MLOps
+        TRN
+        GCS_M
+        API
+        MON
+    end
 ```
 
 A single Composer DAG (`ecommerce_monthly`) runs once per calendar month:
@@ -158,6 +187,7 @@ sql/                           - one-time bootstrap and manual loader SQL
   00_create_datasets.sql       - create bronze/silver/gold/dataform_assertions
   01_create_bronze_raw_events.sql
   02_load_bronze_month.sql     - manual monthly load (DELETE + INSERT)
+  03_create_monitoring_logs.sql - create mlops_monitoring.api_logs table
 definitions/                   - Dataform models
   sources/bronze_raw_events.sqlx
   staging/stg_events.sqlx
@@ -175,21 +205,29 @@ composer/                      - Cloud Composer DAG + helpers
   variables_example.json
   requirements.txt
   README.md                    - Composer-specific setup
-ml/                            - downstream ML pipeline for product demand prediction
-  src/data/bigquery_loader.py   - reads gold feature marts from BigQuery
+ml/                            - ML pipeline for product demand prediction
+  src/data/bigquery_loader.py  - reads gold feature marts from BigQuery
   src/features/build_features.py
   src/split/snapshot_split.py
   src/models/                  - classifier, regressor and hurdle model code
   src/training/train_pipeline.py
+  upload_model.py              - uploads trained .joblib to GCS
   requirements.txt
   README.md                    - ML-specific setup and run instructions
+src/api/                       - production prediction API (MLOps)
+  main.py                      - FastAPI app: serving, BQ feature fetch, monitoring
+Dockerfile.serve               - container recipe for the serving API
+cloudbuild.yaml                - 3-step deployment pipeline (build → push → deploy)
+pyproject.toml                 - project dependencies
 package.json                   - optional, for local Dataform CLI use
 ```
 
 ## One-time GCP setup
 
+### DataOps infrastructure
+
 1. **Enable APIs** in the target project: BigQuery, Cloud Storage,
-   Dataform, Cloud Composer.
+   Dataform, Cloud Composer, Cloud Run, Cloud Build, Artifact Registry.
 2. **Create datasets** by running `sql/00_create_datasets.sql` in the
    BigQuery console (creates `bronze`, `silver`, `gold`,
    `dataform_assertions` in `europe-central2`).
@@ -202,6 +240,40 @@ package.json                   - optional, for local Dataform CLI use
 6. **Composer environment** in `europe-central2`. Follow
    `composer/README.md` for permissions, Airflow variables and DAG
    upload.
+
+### MLOps infrastructure
+
+7. **Monitoring dataset**: create the `mlops_monitoring` dataset and
+   `api_logs` table by running `sql/03_create_monitoring_logs.sql`.
+8. **Artifact Registry repository**: create a Docker repository named
+   `mlops-repo` in `europe-central2`:
+   ```bash
+   gcloud artifacts repositories create mlops-repo \
+       --repository-format=docker \
+       --location=europe-central2
+   ```
+9. **IAM permissions** for the default Compute Engine service account
+   (used by Cloud Run):
+   ```bash
+   # Read features from BigQuery
+   gcloud projects add-iam-policy-binding $PROJECT_ID \
+       --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+       --role="roles/bigquery.user"
+   gcloud projects add-iam-policy-binding $PROJECT_ID \
+       --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+       --role="roles/bigquery.dataViewer"
+   # Write prediction logs to BigQuery
+   gcloud projects add-iam-policy-binding $PROJECT_ID \
+       --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+       --role="roles/bigquery.dataEditor"
+   # Download model from GCS
+   gcloud projects add-iam-policy-binding $PROJECT_ID \
+       --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+       --role="roles/storage.objectViewer"
+   ```
+10. **Cloud Build service account** needs Cloud Run Admin and
+    Service Account User roles to deploy. See `cloudbuild.yaml` for
+    details.
 
 ## Configuration
 
@@ -328,3 +400,125 @@ FROM (
 - `silver.fct_events` uses `event_id = SHA256(natural_key)` and dedups
   with `QUALIFY ROW_NUMBER() OVER (...) = 1`. Identical events from
   retries collapse to a single row.
+
+---
+
+## MLOps: Model Serving & Monitoring
+
+This section documents the production serving layer that takes the
+trained model and makes it available as an API.
+
+### Prediction API
+
+`src/api/main.py` implements a FastAPI application with two endpoints:
+
+- **`POST /predict/demand`** — accepts a product prediction request and
+  returns a demand forecast
+- **`GET /health`** — returns `{"status": "ok"}` for liveness checks
+
+The prediction flow for `/predict/demand`:
+
+1. **Receive request** — validates input via Pydantic
+   (`product_id`, `brand`, `category`, `price`, `prev_month_sales`)
+2. **Fetch features from BigQuery** — queries
+   `gold.product_features_monthly` joined with `gold.dim_calendar` to
+   retrieve the latest engineered features for the given `product_id`
+3. **Reconstruct feature vector** — applies the same feature engineering
+   as the training pipeline (derived features like `price_delta`,
+   `view_to_cart_rate`, `cart_to_purchase_rate`, one-hot encoded
+   categories) and aligns columns to the model's `feature_names` list
+   to prevent training-serving skew
+4. **Run Hurdle Model** — passes the feature vector through the
+   two-stage model (classifier × regressor) and returns the prediction
+5. **Async log** — logs the prediction, full request payload, and model
+   version to `mlops_monitoring.api_logs` in the background
+
+**Graceful fallback:** if BigQuery features are unavailable or the model
+fails to load, the API returns a heuristic prediction based on
+`prev_month_sales` with `model_version: "mock-v1"`. The API never
+returns a 500 error.
+
+### Decoupled model storage
+
+The model artifact (`.joblib`) is stored in Google Cloud Storage
+(`gs://<project>-models/demand_forecast_model.joblib`), **not** inside
+the Docker container. At container startup, the API downloads the latest
+model from GCS.
+
+This decoupled architecture means a new model can be deployed by:
+1. Running `ml/upload_model.py` to upload the new `.joblib` to GCS
+2. Restarting the Cloud Run service
+
+No container rebuild is required — saving 5-10 minutes per model update.
+
+### Deployment pipeline
+
+`cloudbuild.yaml` defines a 3-step pipeline triggered manually via
+`gcloud builds submit --config=cloudbuild.yaml`:
+
+| Step | What it does |
+|------|--------------|
+| 1. Build | Builds a Docker image from `Dockerfile.serve` |
+| 2. Push | Pushes the image to Artifact Registry (`mlops-repo`) |
+| 3. Deploy | Deploys the image to Cloud Run (`demand-forecast-api`) |
+
+The container includes Python 3.11, all dependencies, the API code
+(`src/api/`), and the model class definition (`ml/src/models/`) needed
+to deserialize the `.joblib` file. The model weights themselves are
+fetched from GCS at runtime.
+
+### Monitoring feedback loop
+
+Every prediction is logged asynchronously to
+`mlops_monitoring.api_logs` (created by `sql/03_create_monitoring_logs.sql`):
+
+| Column | Description |
+|--------|-------------|
+| `timestamp` | UTC time of the prediction request |
+| `user_id` | Product ID (mapped to `user_id` column) |
+| `session_id` | Batch identifier (default: `monthly_forecast_run`) |
+| `request_payload` | Full input payload as JSON |
+| `prediction_score` | Predicted demand quantity |
+| `model_version` | `hurdle-xgb-v1` (real) or `mock-v1` (fallback) |
+
+This closes the MLOps feedback loop: training data lives in BigQuery
+(gold layer), the model trains on that data, and production predictions
+flow back into BigQuery — enabling downstream drift detection and
+retraining triggers.
+
+### How to run the serving stack
+
+1. **Train the model** (from the `ml/` directory):
+   ```bash
+   python -m src.training.train_pipeline
+   ```
+2. **Upload model to GCS**:
+   ```bash
+   python upload_model.py
+   ```
+3. **Build and deploy**:
+   ```bash
+   gcloud builds submit --config=cloudbuild.yaml
+   ```
+4. **Test the API**:
+   ```bash
+   # Health check
+   curl https://<CLOUD_RUN_URL>/health
+
+   # Real prediction (product exists in BigQuery)
+   curl -X POST https://<CLOUD_RUN_URL>/predict/demand \
+     -H "Content-Type: application/json" \
+     -d '{"product_id": "4183880", "brand": "samsung", "category": "electronics", "price": 44.21, "prev_month_sales": 15}'
+
+   # Fallback prediction (product does not exist)
+   curl -X POST https://<CLOUD_RUN_URL>/predict/demand \
+     -H "Content-Type: application/json" \
+     -d '{"product_id": "99999999", "brand": "test", "category": "test", "price": 10.0, "prev_month_sales": 5}'
+   ```
+5. **Verify monitoring**:
+   ```sql
+   SELECT timestamp, user_id AS product_id, prediction_score, model_version
+   FROM `ecommerce-project-496110.mlops_monitoring.api_logs`
+   ORDER BY timestamp DESC
+   LIMIT 5;
+   ```
